@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Expo Card Scanner</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --accent:#0f172a; --accent-ink:#fff; --soft:#eef2f7; --danger:#b91c1c; --ok:#15803d;
+  }
+  body.suncart{ --accent:#d97706; --accent-ink:#fff; --soft:#fff4e0; }
+  body.intello{ --accent:#1d4ed8; --accent-ink:#fff; --soft:#e8efff; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+       padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+  header{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);
+         padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;justify-content:space-between}
+  header h1{font-size:17px;margin:0;font-weight:650}
+  header small{opacity:.85;display:block;font-weight:400;font-size:12px}
+  header button{background:rgba(255,255,255,.18);color:inherit;border:0;border-radius:8px;padding:8px 12px;font:inherit;font-size:14px}
+  main{padding:16px;max-width:560px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+  input[type=text],input[type=tel],input[type=email],input[type=password],textarea{
+    width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  textarea{min-height:96px;resize:vertical}
+  .btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font:inherit;font-weight:600;
+       background:var(--accent);color:var(--accent-ink);text-align:center}
+  .btn.ghost{background:var(--soft);color:var(--ink)}
+  .btn[disabled]{opacity:.5}
+  .row{display:flex;gap:10px}.row>*{flex:1}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 14px;font:inherit;font-size:14px;color:var(--ink)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .seg{display:flex;gap:10px;margin-bottom:6px}
+  .seg button{flex:1;padding:12px;border-radius:12px;border:2px solid var(--line);background:#fff;font:inherit;font-weight:600}
+  .seg button.sel[data-co=suncart]{border-color:#d97706;background:#fff4e0}
+  .seg button.sel[data-co=intello]{border-color:#1d4ed8;background:#e8efff}
+  .err{color:var(--danger);font-size:14px;margin-top:10px;min-height:18px}
+  .hint{color:var(--muted);font-size:13px}
+  #preview{width:100%;border-radius:10px;margin-top:12px;display:none;max-height:240px;object-fit:contain;background:#000}
+  .bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:12px;display:none}
+  .bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  .status{font-size:13px;color:var(--muted);margin-top:6px;min-height:18px}
+  .banner{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+  nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;
+      padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;padding:14px 0;border:0;background:none;font:inherit;font-size:14px;color:var(--muted)}
+  nav button.on{color:var(--accent);font-weight:700}
+  .entry{display:flex;gap:12px}
+  .entry img{width:72px;height:48px;object-fit:cover;border-radius:6px;background:#ddd;flex:none}
+  .entry h3{margin:0;font-size:16px}
+  .entry p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+  .tag{display:inline-block;background:var(--soft);border-radius:6px;padding:2px 8px;font-size:12px;margin:4px 4px 0 0}
+  dl{margin:10px 0 0;display:grid;grid-template-columns:96px 1fr;gap:6px 10px;font-size:14px}
+  dt{color:var(--muted)}dd{margin:0;word-break:break-word}
+  .hidden{display:none!important}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom));background:#0f172a;color:#fff;
+         padding:10px 16px;border-radius:10px;font-size:14px;z-index:20}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="login" class="hidden">
+  <main>
+    <h1 style="margin:28px 0 4px">Expo Card Scanner</h1>
+    <p class="hint" style="margin-top:0">Choose the company you are representing today.</p>
+    <div class="card">
+      <button class="btn" id="goSuncart" type="button" style="background:#d97706;margin-bottom:12px">Suncart</button>
+      <button class="btn" id="goIntello" type="button" style="background:#1d4ed8">Intello</button>
+    </div>
+  </main>
+</section>
+
+<!-- ============ APP ============ -->
+<section id="app" class="hidden">
+  <header>
+    <h1 id="hdrTitle">Scanner<small id="hdrSub"></small></h1>
+    <button id="logout" type="button">Switch</button>
+  </header>
+
+  <main>
+    <!-- SCAN TAB -->
+    <div id="tabScan">
+      <div class="card">
+        <div class="row">
+          <button class="btn" id="btnCam" type="button">📷 Scan card</button>
+          <button class="btn ghost" id="btnGal" type="button">Gallery</button>
+        </div>
+        <input id="fileCam" type="file" accept="image/*" capture="environment" class="hidden">
+        <input id="fileGal" type="file" accept="image/*" class="hidden">
+        <img id="preview" alt="Scanned card">
+        <div class="bar" id="bar"><i id="barFill"></i></div>
+        <div class="status" id="status"></div>
+        <button class="btn ghost" id="btnManual" type="button" style="margin-top:8px">Skip scan, enter manually</button>
+      </div>
+
+      <form id="form" class="card hidden" autocomplete="off">
+        <div class="banner" id="formBanner"></div>
+
+        <label for="f_name">Name</label>
+        <input id="f_name" type="text">
+        <label for="f_designation">Designation</label>
+        <input id="f_designation" type="text">
+        <label for="f_company">Company</label>
+        <input id="f_company" type="text">
+        <label for="f_phone">Phone</label>
+        <input id="f_phone" type="tel">
+        <label for="f_email">Email</label>
+        <input id="f_email" type="email" autocapitalize="none">
+        <label for="f_website">Website</label>
+        <input id="f_website" type="text" autocapitalize="none">
+        <label for="f_address">Address</label>
+        <textarea id="f_address" style="min-height:64px"></textarea>
+
+        <label>Vendor type</label>
+        <div class="chips" id="vendorChips"></div>
+
+        <label>Products required</label>
+        <div class="chips" id="productChips"></div>
+
+        <label for="f_desc">Description / notes about this lead</label>
+        <textarea id="f_desc" placeholder="Requirement, budget, timeline, follow-up, anything useful…"></textarea>
+
+        <details id="rawDetails" style="margin-top:12px">
+          <summary class="hint">Raw text read from card</summary>
+          <pre id="rawText" style="white-space:pre-wrap;font-size:12px;color:var(--muted)"></pre>
+        </details>
+
+        <div class="err" id="formErr"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost" id="btnReset" type="button">Cancel</button>
+          <button class="btn" id="btnSubmit" type="submit">Save lead</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ENTRIES TAB -->
+    <div id="tabList" class="hidden">
+      <div id="listHead" class="row" style="margin-bottom:12px">
+        <button class="btn ghost" id="btnExport" type="button">Export JSON</button>
+        <button class="btn ghost" id="btnClear" type="button">Clear list</button>
+      </div>
+      <div id="entries"></div>
+    </div>
+  </main>
+
+  <nav>
+    <button id="navScan" class="on" type="button">Scan</button>
+    <button id="navList" type="button">Leads <span id="count"></span></button>
+  </nav>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+/* =====================================================================
+   CONFIG — everything company-specific lives here.
+   When your backend is ready, set API_BASE and implement the two
+   marked hooks (Api.login, Api.saveLead). Nothing else needs to change.
+   ===================================================================== */
+const CONFIG = {
+  API_BASE: '',                    // e.g. 'https://api.yourdomain.in'  (empty = local demo mode)
+  companies: {
+    suncart: {
+      label: 'Suncart',
+      table: 'suncart_leads',      // table the backend should write to
+      prefillOnScan: true,
+      vendorTypes: ['EPC', 'Installer', 'Distributor', 'Dealer'],
+      products: ['Superkits', 'BOS', 'KENT Hybrid', 'KENT Battery'],
+    },
+    intello: {
+      label: 'Intello',
+      table: 'intello_leads',
+      prefillOnScan: true,
+      vendorTypes: ['EPC', 'OEM'],
+      products: ['DG Sync', 'ZE', 'Dongle', 'CD', 'Fleet Management'],
+    },
+  },
+};
+
+/* ===================== API HOOK (backend plug-in point) ===================== */
+const Api = {
+  // Expected: POST {API_BASE}/leads  {company_key, table, ...lead}
+  async saveLead(session, lead) {
+    if (!CONFIG.API_BASE) return { id: lead.id, local: true };
+    const r = await fetch(CONFIG.API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lead),
+    });
+    if (!r.ok) throw new Error('Server rejected the lead (' + r.status + ')');
+    return r.json();
+  },
+};
+
+/* ===================== CARD TEXT PARSER ===================== */
+function parseCard(text) {
+  const out = { name: '', designation: '', company: '', phone: '', email: '', website: '', address: '' };
+  const clean = s => s.replace(/[|_~•·¦§]/g, ' ').replace(/\s+/g, ' ')
+    .replace(/^[^A-Za-z0-9+(]+/, '').replace(/[^A-Za-z0-9.)+\/-]+$/, '').trim();
+  const lines = text.split(/\r?\n/).map(clean).filter(s => s.length > 1);
+  const used = new Set();
+
+  const emailRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+  const webRe = /\b((?:https?:\/\/)?(?:www\.)[^\s,;]+|[A-Za-z0-9-]+\.(?:com|in|co\.in|net|org|io|co|biz|info)(?:\/[^\s,;]*)?)\b/i;
+  const phoneRe = /(\+?\d[\d\s().-]{8,16}\d)/;
+  const titleRe = /\b(ceo|cto|coo|cfo|cmo|md|managing director|director|founder|co-?founder|partner|proprietor|owner|president|vice president|vp|head|manager|engineer|executive|sales|marketing|business development|bd|consultant|lead|officer|general manager|gm|agm|chairman|principal|architect|supervisor|specialist|associate)\b/i;
+  const acronymRe = /^(ceo|cto|coo|cfo|cmo|md|gm|agm|vp|hr|bd)$/i;
+  const companyRe = /\b(pvt|private|ltd|limited|llp|inc|corp|solar|energy|energies|power|technologies|technology|tech|industries|enterprises|systems|solutions|electric|electricals|infra|renewables?|engineering|group)\b/i;
+  const addrRe = /\b(road|rd\.?|street|st\.?|floor|sector|nagar|plot|block|phase|industrial|area|colony|tower|building|bldg|near|opp|marg|lane|city|district|dist|vihar|enclave|extension|market|chowk|complex|park|garden|delhi|noida|gurgaon|gurugram|ghaziabad|faridabad|mumbai|pune|bangalore|bengaluru|hyderabad|chennai|kolkata|jaipur|lucknow|ahmedabad|india)\b|\b\d{6}\b/i;
+  const freeMail = /^(gmail|yahoo|outlook|hotmail|rediffmail|live|icloud|proton|protonmail|aol)$/i;
+
+  // email
+  lines.forEach((l, i) => { if (!out.email) { const m = l.match(emailRe); if (m) { out.email = m[0].toLowerCase(); used.add(i); } } });
+
+  // phones
+  const phones = [];
+  lines.forEach((l, i) => {
+    if (l.match(emailRe)) return;
+    const cleaned = l.replace(/\b(tel|ph|phone|mob|mobile|cell|m|t|p)\b[:.\s-]*/ig, '');
+    const m = cleaned.match(phoneRe);
+    if (m) {
+      const digits = m[1].replace(/\D/g, '');
+      if (digits.length >= 10 && digits.length <= 13) { phones.push(m[1].replace(/\s+/g, ' ').trim()); used.add(i); }
+    }
+  });
+  out.phone = phones.join(' / ');
+
+  // website
+  lines.forEach((l, i) => {
+    if (out.website) return;
+    const m = l.replace(emailRe, '').match(webRe);
+    if (m) { out.website = m[1].replace(/[.,;]+$/, '').toLowerCase(); if (!l.match(emailRe)) used.add(i); }
+  });
+
+  // name: 2-4 words; ignores stray lowercase junk words around it
+  const nameOf = l => {
+    if (companyRe.test(l) || titleRe.test(l) || addrRe.test(l)) return '';
+    let w = l.replace(/^(mr|mrs|ms|dr|er|ca|shri|smt)\.?\s+/i, '').split(' ').filter(Boolean);
+    const caps = w.filter(x => /^[A-Z]/.test(x));
+    if (caps.length >= 2 && caps.length < w.length) w = caps;
+    if (w.length < 2 || w.length > 4) return '';
+    if (!w.every(x => /^[A-Za-z][A-Za-z.'-]{0,19}$/.test(x))) return '';
+    return w.join(' ');
+  };
+  // designation: strict pass, then a looser pass
+  let desigIdx = -1;
+  const takeDesig = maxLen => lines.forEach((l, i) => {
+    if (desigIdx >= 0 || used.has(i) || l.length > maxLen || !titleRe.test(l) || companyRe.test(l) || addrRe.test(l)) return;
+    const m = l.match(titleRe), before = l.slice(0, m.index).trim();
+    if (before && nameOf(before)) { out.name = nameOf(before); out.designation = l.slice(m.index).trim(); }
+    else out.designation = acronymRe.test(l) ? l.toUpperCase() : l;
+    desigIdx = i; used.add(i);
+  });
+  takeDesig(50); if (desigIdx < 0) takeDesig(80);
+
+  // company (keyword match)
+  lines.forEach((l, i) => { if (!out.company && !used.has(i) && companyRe.test(l) && !addrRe.test(l) && !titleRe.test(l)) { out.company = l; used.add(i); } });
+
+  if (!out.name && desigIdx > 0 && !used.has(desigIdx - 1) && nameOf(lines[desigIdx - 1])) { out.name = nameOf(lines[desigIdx - 1]); used.add(desigIdx - 1); }
+  if (!out.name) lines.forEach((l, i) => { if (!out.name && !used.has(i)) { const n = nameOf(l); if (n) { out.name = n; used.add(i); } } });
+
+  // address
+  const addr = [];
+  lines.forEach((l, i) => { if (!used.has(i) && (addrRe.test(l) || (/\d/.test(l) && /,/.test(l) && l.length > 12))) { addr.push(l); used.add(i); } });
+  out.address = addr.map(x => x.replace(/^[A-Za-z0-9]\s+(?=\d)/, '')).join(', ');
+
+  // company fallback: from the email / website domain
+  if (!out.company) {
+    const dom = (out.email.split('@')[1] || out.website.replace(/^https?:\/\//, '').replace(/^www\./, '')).split('/')[0];
+    const label = dom.split('.')[0];
+    if (label && !freeMail.test(label)) {
+      const hit = lines.findIndex((l, i) => !used.has(i) && l.toLowerCase().includes(label.toLowerCase()));
+      out.company = hit >= 0 ? lines[hit] : label.charAt(0).toUpperCase() + label.slice(1);
+    }
+  }
+  return out;
+}
+
+function mergeText(a, b) {
+  const key = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const seen = new Set(a.split(/\r?\n/).map(key));
+  const extra = b.split(/\r?\n/).filter(l => { const k = key(l); if (!k || seen.has(k)) return false; seen.add(k); return true; });
+  return a + '\n' + extra.join('\n');
+}
+
+/* ===================== STATE & HELPERS ===================== */
+const $ = id => document.getElementById(id);
+const store = {
+  get session() { try { return JSON.parse(sessionStorage.getItem('session')); } catch (e) { return null; } },
+  set session(v) { try { v ? sessionStorage.setItem('session', JSON.stringify(v)) : sessionStorage.removeItem('session'); } catch (e) {} },
+  leads(company) { try { return JSON.parse(localStorage.getItem('leads_' + company)) || []; } catch (e) { return []; } },
+  saveLeads(company, arr) { try { localStorage.setItem('leads_' + company, JSON.stringify(arr)); } catch (e) { toast('Storage full — export and clear leads'); } },
+};
+let state = { company: null, thumb: '', vendorType: '', products: new Set(), raw: '' };
+
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+}
+function chip(label, on, onClick) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (on ? ' on' : ''); b.textContent = label;
+  b.onclick = () => onClick(b); return b;
+}
+
+/* ===================== LOGIN ===================== */
+function chooseCo(co) { store.session = { company: co }; showApp(); }
+$('goSuncart').onclick = () => chooseCo('suncart');
+$('goIntello').onclick = () => chooseCo('intello');
+$('logout').onclick = () => { store.session = null; resetScan(); showLogin(); };
+
+function showLogin() {
+  document.body.className = '';
+  $('app').classList.add('hidden'); $('login').classList.remove('hidden');
+}
+function showApp() {
+  const s = store.session, cfg = CONFIG.companies[s.company];
+  state.company = s.company; document.body.className = s.company;
+  $('hdrTitle').firstChild.textContent = cfg.label + ' · Card Scanner';
+  $('hdrSub').textContent = '';
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  buildChips(); switchTab('scan'); renderList();
+}
+
+/* ===================== TABS ===================== */
+function switchTab(t) {
+  $('tabScan').classList.toggle('hidden', t !== 'scan');
+  $('tabList').classList.toggle('hidden', t !== 'list');
+  $('navScan').classList.toggle('on', t === 'scan');
+  $('navList').classList.toggle('on', t === 'list');
+  window.scrollTo(0, 0);
+}
+$('navScan').onclick = () => switchTab('scan');
+$('navList').onclick = () => { renderList(); switchTab('list'); };
+
+/* ===================== CHIPS ===================== */
+function buildChips() {
+  const cfg = CONFIG.companies[state.company];
+  const vc = $('vendorChips'); vc.innerHTML = '';
+  cfg.vendorTypes.forEach(v => vc.appendChild(chip(v, state.vendorType === v, () => {
+    state.vendorType = state.vendorType === v ? '' : v; buildChips();
+  })));
+  const pc = $('productChips'); pc.innerHTML = '';
+  cfg.products.forEach(p => pc.appendChild(chip(p, state.products.has(p), () => {
+    state.products.has(p) ? state.products.delete(p) : state.products.add(p); buildChips();
+  })));
+}
+
+/* ===================== SCANNING ===================== */
+$('btnCam').onclick = () => $('fileCam').click();
+$('btnGal').onclick = () => $('fileGal').click();
+$('fileCam').onchange = e => handleFile(e.target.files[0]);
+$('fileGal').onchange = e => handleFile(e.target.files[0]);
+$('btnManual').onclick = () => openForm({}, 'Manual entry — fill in the details below.');
+$('btnReset').onclick = resetScan;
+
+function loadImage(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = () => rej(new Error('Could not read the image'));
+    img.src = url;
+  });
+}
+function drawScaled(img, maxW, gray, up) {
+  const long = Math.max(img.width, img.height);
+  const s = long > maxW ? maxW / long : (up && long < 1400 ? 1600 / long : 1);
+  const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
+  if (gray) { // grayscale + mild contrast to help OCR
+    const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+    for (let i = 0; i < p.length; i += 4) {
+      let g = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+      g = Math.max(0, Math.min(255, (g - 128) * 1.25 + 128)); p[i] = p[i + 1] = p[i + 2] = g;
+    }
+    x.putImageData(d, 0, 0);
+  }
+  return c;
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  $('fileCam').value = ''; $('fileGal').value = '';
+  $('form').classList.add('hidden');
+  const setP = (pct, msg) => { $('bar').style.display = 'block'; $('barFill').style.width = pct + '%'; $('status').textContent = msg; };
+  let worker = null;
+  try {
+    setP(5, 'Preparing image…');
+    const img = await loadImage(file);
+    $('preview').src = drawScaled(img, 900, false).toDataURL('image/jpeg', 0.8); $('preview').style.display = 'block';
+    state.thumb = drawScaled(img, 360, false).toDataURL('image/jpeg', 0.6);
+    if (!window.Tesseract) throw new Error('Text reader failed to load — check internet connection');
+    const cfg = CONFIG.companies[state.company];
+    let prog = { base: 10, span: 45 };
+    setP(10, 'Reading text…');
+    worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => { if (m.status === 'recognizing text') setP(prog.base + Math.round(m.progress * prog.span), 'Reading text… ' + Math.round(m.progress * 100) + '%'); },
+    });
+    await worker.setParameters({ tessedit_pageseg_mode: '3' });
+    let text = (await worker.recognize(drawScaled(img, 1800, true, true))).data.text || '';
+    let parsed = cfg.prefillOnScan ? parseCard(text) : {};
+    if (cfg.prefillOnScan && (!parsed.name || !parsed.designation)) {
+      prog = { base: 55, span: 40 }; setP(55, 'Reading again…');
+      await worker.setParameters({ tessedit_pageseg_mode: '11' });
+      const t2 = (await worker.recognize(drawScaled(img, 2200, false, true))).data.text || '';
+      text = mergeText(text, t2); parsed = parseCard(text);
+    }
+    state.raw = text;
+    setP(100, 'Done');
+    const filled = Object.values(parsed).filter(Boolean).length;
+    openForm(parsed, filled ? 'Details read from the card — please verify before saving.' : 'Could not read much from the card. Retake the photo in better light, or fill in manually.');
+    setTimeout(() => { $('bar').style.display = 'none'; $('status').textContent = ''; }, 600);
+  } catch (e) {
+    $('bar').style.display = 'none'; $('status').textContent = '⚠ ' + e.message;
+  } finally { if (worker) { try { await worker.terminate(); } catch (e) {} } }
+}
+
+function openForm(v, msg) {
+  ['name', 'designation', 'company', 'phone', 'email', 'website', 'address'].forEach(k => $('f_' + k).value = v[k] || '');
+  $('f_desc').value = ''; state.vendorType = ''; state.products = new Set(); buildChips();
+  $('rawText').textContent = state.raw || '(none)';
+  $('rawDetails').open = !!state.raw && (!v.name || !v.designation);
+  $('formBanner').textContent = msg; $('formErr').textContent = '';
+  $('form').classList.remove('hidden');
+  $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function resetScan() {
+  $('form').classList.add('hidden'); $('preview').style.display = 'none'; $('preview').src = '';
+  $('bar').style.display = 'none'; $('status').textContent = '';
+  state.thumb = ''; state.raw = ''; state.vendorType = ''; state.products = new Set();
+}
+
+/* ===================== SAVE ===================== */
+$('form').onsubmit = async e => {
+  e.preventDefault(); $('formErr').textContent = '';
+  const cfg = CONFIG.companies[state.company];
+  const lead = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    company_key: state.company, table: cfg.table,
+    name: $('f_name').value.trim(), designation: $('f_designation').value.trim(),
+    company: $('f_company').value.trim(), phone: $('f_phone').value.trim(),
+    email: $('f_email').value.trim(), website: $('f_website').value.trim(), address: $('f_address').value.trim(),
+    vendor_type: state.vendorType, products: [...state.products],
+    description: $('f_desc').value.trim(),
+    scanned_by: cfg.label, captured_at: new Date().toISOString(),
+    card_thumb: state.thumb,
+  };
+  if (!lead.name && !lead.company && !lead.phone && !lead.email) { $('formErr').textContent = 'Add at least a name, company, phone or email.'; return; }
+  $('btnSubmit').disabled = true;
+  try {
+    await Api.saveLead(store.session, lead);
+    const arr = store.leads(state.company); arr.unshift(lead); store.saveLeads(state.company, arr);
+    toast('Lead saved'); resetScan(); renderList();
+  } catch (err) { $('formErr').textContent = err.message; }
+  $('btnSubmit').disabled = false;
+};
+
+/* ===================== LEADS LIST ===================== */
+function renderList() {
+  const arr = store.leads(state.company);
+  $('count').textContent = arr.length ? '(' + arr.length + ')' : '';
+  const box = $('entries'); box.innerHTML = '';
+  $('listHead').classList.toggle('hidden', !arr.length);
+  if (!arr.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'No leads captured yet.'; box.appendChild(p); return; }
+  arr.forEach(l => {
+    const c = document.createElement('div'); c.className = 'card';
+    const head = document.createElement('div'); head.className = 'entry';
+    if (l.card_thumb) { const im = document.createElement('img'); im.src = l.card_thumb; im.alt = ''; head.appendChild(im); }
+    const t = document.createElement('div');
+    const h = document.createElement('h3'); h.textContent = l.name || l.company || '(no name)';
+    const p = document.createElement('p'); p.textContent = [l.designation, l.name ? l.company : ''].filter(Boolean).join(' · ');
+    t.append(h, p);
+    if (l.vendor_type) { const s = document.createElement('span'); s.className = 'tag'; s.textContent = l.vendor_type; t.appendChild(s); }
+    (l.products || []).forEach(x => { const s = document.createElement('span'); s.className = 'tag'; s.textContent = x; t.appendChild(s); });
+    head.appendChild(t); c.appendChild(head);
+
+    const dl = document.createElement('dl');
+    [['Phone', l.phone], ['Email', l.email], ['Website', l.website], ['Address', l.address], ['Notes', l.description],
+     ['Captured', new Date(l.captured_at).toLocaleString()]].forEach(([k, v]) => {
+      if (!v) return; const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; dl.append(dt, dd);
+    });
+    c.appendChild(dl);
+
+    const del = document.createElement('button'); del.className = 'btn ghost'; del.style.marginTop = '12px'; del.textContent = 'Delete';
+    del.onclick = () => { if (confirm('Delete this lead?')) { store.saveLeads(state.company, store.leads(state.company).filter(x => x.id !== l.id)); renderList(); } };
+    c.appendChild(del); box.appendChild(c);
+  });
+}
+$('btnExport').onclick = () => {
+  const arr = store.leads(state.company).map(({ card_thumb, ...rest }) => rest);
+  const blob = new Blob([JSON.stringify(arr, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = CONFIG.companies[state.company].table + '_' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+};
+$('btnClear').onclick = () => { if (confirm('Delete ALL leads on this device?')) { store.saveLeads(state.company, []); renderList(); } };
+
+/* ===================== BOOT ===================== */
+if (store.session && CONFIG.companies[store.session.company]) showApp(); else showLogin();
+</script>
+</body>
+</html>
